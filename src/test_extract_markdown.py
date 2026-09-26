@@ -26,8 +26,7 @@ class TestExtractMarkdown(unittest.TestCase):
 
     def test_images_are_not_links(self):
         text = "![logo](logo.png) and [site](https://example.com)"
-        self.assertEqual([("site", "https://example.com")],
-            extract_markdown_links(text),)
+        self.assertEqual([("site", "https://example.com")], extract_markdown_links(text),)
 
 if __name__ == "__main__":
     unittest.main()
