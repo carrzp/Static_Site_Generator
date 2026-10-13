@@ -1,6 +1,6 @@
 import unittest
 from textnode import TextNode, TextType, text_node_to_html_node
-from text_to_textnode import text_to_textnodes
+from text_to_textnode import text_to_text_nodes
 
 
 class TestTextNode(unittest.TestCase):
@@ -46,7 +46,7 @@ class TestTextNode(unittest.TestCase):
 
     def test_full_text(self):
         full_text = ("This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)")
-        function_test = text_to_textnodes(full_text)
+        function_test = text_to_text_nodes(full_text)
         self.assertEqual(function_test, [
         TextNode("This is ", TextType.TEXT),
         TextNode("text", TextType.BOLD),

@@ -22,27 +22,35 @@ class BlockType(Enum):
     UNORDERED_LIST = "unordered_list"
     ORDERED_LIST = "ordered_list"
 
-def block_to_block_type(block):
+def block_to_block_type(block: str) -> BlockType:
+    block = block.strip()
     lines = block.split("\n")
+    print(repr(block))
 
-    if any(line.startswith(("###### ", "##### ", "#### ", "### ", "## ", "# ")) for line in lines):
+    if lines[0].strip().startswith("```") and lines[-1].strip().startswith("```"):
+            return BlockType.CODE
+    
+    if block.startswith(("# ", "## ", "### ", "#### ", "##### ", "###### ")):
         return BlockType.HEADING
 
-    if lines[0].startswith("```") and lines[-1].startswith("```"):
-        return BlockType.CODE
-
-    if all(line.startswith(">") for line in lines if line.strip()):
+    if block.startswith(">"):
+        for line in lines:
+            if not line.startswith(">"):
+                return BlockType.PARAGRAPH
         return BlockType.QUOTE
 
-    if all(line.startswith("- ") for line in lines if line.strip()):
+    if block.startswith("- "):
+        for line in lines:
+            if not line.startswith("- "):
+                return BlockType.PARAGRAPH
         return BlockType.UNORDERED_LIST
 
-    ordered = True
-    for idx, line in enumerate(lines, start=1):
-        if line.strip() and not line.startswith(f"{idx}. "):
-            ordered = False
-            break
-    if ordered:
+    if block.startswith("1. "):
+        i = 1
+        for line in lines:
+            if not line.startswith(f"{i}. "):
+                return BlockType.PARAGRAPH
+            i += 1
         return BlockType.ORDERED_LIST
 
     return BlockType.PARAGRAPH
@@ -63,7 +71,8 @@ def heading_to_HTML(block):
     return ParentNode(f"h{heading_count}", text_to_children(heading_split[1]))
 
 def paragraph_to_HTML(block):
-    return ParentNode("p", text_to_children(block))
+    final_str = " ".join(block.split("\n"))
+    return ParentNode("p", text_to_children(final_str))
 
 def quote_to_HTML(block):
     if not block.startswith(">"):
@@ -79,22 +88,56 @@ def code_to_HTML(block):
     if not block.startswith("```"):
         raise Exception("Block is not of type CODE")
     else:
-        split_code = block.split("```")
-        code_text_node = TextNode(split_code[1], TextType.TEXT)
+        split_code = block.split("\n")
+        content_lines = split_code[1:-1]
+        join = "\n".join(content_lines) + "\n"
+        code_text_node = TextNode(join, TextType.TEXT)
         html_leaf = text_node_to_html_node(code_text_node)
         wrapped = ParentNode("code",[html_leaf])
         outer = ParentNode("pre", [wrapped])
     return outer
 
 
-def ordered_list_to_HTML(blocktype):
-    pass
+def ordered_list_to_HTML(block):
+    ol_nodes = []
+    if not block.startswith("1. "):
+        raise Exception("Block is not of type ORDERED_LIST")
+    split_block = block.split("\n")
+    for line in split_block:
+        number, item_text = line.split(". ", 1)
+        nodes = text_to_children(item_text)
+        inner = ParentNode("li", nodes)
+        ol_nodes.append(inner) 
+    outer = ParentNode("ol", ol_nodes)
+    return outer
 
-def unordered_list_to_HTML(blocktype):
-    pass
-
+def unordered_list_to_HTML(block):
+    li_nodes = []
+    if not block.startswith("- "):
+        raise Exception("Block is not of type UNORDERED_LIST")
+    split_block = block.split("\n")
+    for line in split_block:
+        nodes = text_to_children(line[2:])
+        inner = ParentNode("li", nodes)
+        li_nodes.append(inner) 
+    outer = ParentNode("ul", li_nodes)
+    return outer
+            
 def markdown_to_html_node(markdown) -> HTMLNode:
-        blocks = markdown_to_blocks(markdown)
-        for block in blocks:
-            block_type = block_to_block_type(block)
-            new_HTMLNode = HTMLNode()
+    block_nodes = []
+    blocks = markdown_to_blocks(markdown)
+    for block in blocks:
+        block_type = block_to_block_type(block)
+        if block_type == BlockType.PARAGRAPH:
+            block_nodes.append(paragraph_to_HTML(block))
+        elif block_type == BlockType.HEADING:
+            block_nodes.append(heading_to_HTML(block))
+        elif block_type == BlockType.QUOTE:
+            block_nodes.append(quote_to_HTML(block))
+        elif block_type == BlockType.UNORDERED_LIST:
+            block_nodes.append(unordered_list_to_HTML(block))
+        elif block_type == BlockType.ORDERED_LIST:
+            block_nodes.append(ordered_list_to_HTML(block))
+        elif block_type == BlockType.CODE:
+            block_nodes.append(code_to_HTML(block))
+    return ParentNode("div", block_nodes)
